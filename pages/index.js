@@ -198,28 +198,40 @@ export default function App() {
         {showSplash && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
             <div className="text-center">
-              <div className="text-2xl font-semibold">ICF México</div>
+              <div className="text-2xl font-semibold">ICF MEXICO</div>
               <div className="text-sm text-gray-600 mt-2">{t("Construcción eficiente y sostenible, hecha en México.", "Efficient and sustainable construction, made in Mexico.")}</div>
             </div>
           </div>
         )}
 
         <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">ICF México — {t("Demo PWA (Alpha)", "PWA Demo (Alpha)")}</h1>
-            <div className="text-xs mt-1 text-gray-500">
-              {t("Entorno:", "Environment:")} <span className="inline-block px-2 py-0.5 rounded bg-gray-100 border">{process.env.NEXT_PUBLIC_ENV || "DEMO"}</span> · <span className="text-gray-400">{QUOTE_ENDPOINT}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm">ES</span>
-            <button className={`w-12 h-6 rounded-full relative bg-gray-300`} onClick={() => setLang(lang === "es" ? "en" : "es")}>
-              <span className={`absolute top-0.5 transition-all ${lang === "es" ? "left-0.5" : "left-6"} w-5 h-5 bg-white rounded-full shadow`} />
-            </button>
-            <span className="text-sm">EN</span>
-          </div>
-        </header>
-
+  <div>
+    <h1 className="text-2xl font-bold tracking-wide">
+      ICF MEXICO — {t("Demo PWA (Alpha)", "PWA Demo (Alpha)")}
+    </h1>
+    <div className="text-xs mt-1 text-gray-500">
+      {t("Entorno:", "Environment:")}{" "}
+      <span className="inline-block px-2 py-0.5 rounded bg-gray-100 border">
+        {process.env.NEXT_PUBLIC_ENV || "DEMO"}
+      </span>{" "}
+      · <span className="text-gray-400">{QUOTE_ENDPOINT}</span>
+    </div>
+  </div>
+  <div className="flex items-center gap-2">
+    <span className="text-sm">ES</span>
+    <button
+      className="w-12 h-6 rounded-full relative bg-gray-300"
+      onClick={() => setLang(lang === "es" ? "en" : "es")}
+    >
+      <span
+        className={`absolute top-0.5 transition-all ${
+          lang === "es" ? "left-0.5" : "left-6"
+        } w-5 h-5 bg-white rounded-full shadow`}
+      />
+    </button>
+    <span className="text-sm">EN</span>
+  </div>
+</header>
         <div className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 bg-white rounded-2xl p-4 shadow-sm">
             <h2 className="text-lg font-medium mb-3">{t("Entradas", "Inputs")}</h2>
