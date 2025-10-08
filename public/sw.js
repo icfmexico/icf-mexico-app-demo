@@ -1,4 +1,4 @@
-const CACHE = 'icfmx-v4';
+const CACHE = 'icfmx-v5';
 const ASSETS = ['/', '/manifest.webmanifest', '/icons/app-192.png', '/icons/app-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(self.skipWaiting()));
