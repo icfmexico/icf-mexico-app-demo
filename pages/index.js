@@ -156,8 +156,8 @@ export default function App() {
 
   const fmt = (n, f=2) => new Intl.NumberFormat(lang, { maximumFractionDigits: f }).format(Number(n||0));
   const waText = encodeURIComponent(t(
-    `Hola ICF México, acabo de enviar mi cotización (ID ${quoteId || ''}) desde la app y quisiera hablar con un asesor.`,
-    `Hello ICF México, I just sent my quote (ID ${quoteId || ''}) from the app and would like to speak with an advisor.`
+    `Hola ICF MEXICO, acabo de enviar mi cotización (ID ${quoteId || ''}) desde la app y quisiera hablar con un asesor.`,
+    `Hello ICF MEXICO, I just sent my quote (ID ${quoteId || ''}) from the app and would like to speak with an advisor.`
   ));
 
   async function handleSendQuote() {
@@ -180,7 +180,7 @@ export default function App() {
     doc.setFillColor(26,61,124);
     doc.rect(0,0,doc.internal.pageSize.getWidth(),60,'F');
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
-    doc.text('ICF México — Smart · Efficient · Strong', marginX, 38);
+    doc.text('ICF MEXICO — Smart · Efficient · Strong', marginX, 38);
     doc.setTextColor(0,0,0); doc.setFont('helvetica','bold'); doc.setFontSize(14);
     doc.text(isES?'Resumen de Cotización':'Quote Summary', marginX, y);
     doc.setFont('helvetica','normal'); doc.setFontSize(11);
