@@ -1,3 +1,4 @@
+// pages/index.js — ICF México App (Alpha con categorías/productos)
 import React, { useMemo, useState, useEffect } from "react";
 import jsPDF from "jspdf";
 
@@ -5,6 +6,7 @@ export default function App() {
   const [lang, setLang] = useState("es");
   const t = (es, en) => (lang === "es" ? es : en);
 
+  // Splash & prefs
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
     try {
@@ -28,10 +30,58 @@ export default function App() {
   const QUOTE_ENDPOINT = process.env.NEXT_PUBLIC_QUOTE_ENDPOINT || "https://icfmexico-leads.vercel.app/api/quote";
   const WHATSAPP = "https://wa.me/526143555565?text=";
 
-  const [system, setSystem] = useState("Makros");
+  // ===== NUEVOS ESTADOS (categoría/producto) =====
+  const [category, setCategory] = useState("Muros ICF");
+  const [product, setProduct] = useState("Reticular-20");
+
+  // Entradas generales
   const [area, setArea] = useState(120);
   const [waste, setWaste] = useState(5);
   const [steelRate, setSteelRate] = useState(80);
+
+  // Muros ICF
+  const wallCoverage = {
+    "Reticular-15": 0.36,          // m²/pza
+    "Reticular-20": 0.30,
+    "StrongBlock 100": 1.08,
+    "StrongBlock 150": 2.16,
+    "Pared Sólida": 0.48           // referencia útil; ajustable cuando definamos pieza final
+  };
+  const tEquiv = { // espesor equivalente (m) para reticulares/StrongBlock
+    "Reticular-15": (0.20/1.20 + 0.20/0.60 - (0.20*0.20)/(1.20*0.60)) * 0.076,
+    "Reticular-20": (0.20/1.00 + 0.20/0.60 - (0.20*0.20)/(1.00*0.60)) * 0.10,
+    "StrongBlock 100": (0.20/1.20 + 0.20/0.60 - (0.20*0.20)/(1.20*0.60)) * 0.10,
+    "StrongBlock 150": (0.20/1.20 + 0.20/0.60 - (0.20*0.20)/(1.20*0.60)) * 0.1524
+  };
+  const rMap = { // R-values oficiales
+    "Reticular-15": 24,
+    "Reticular-20": 26,
+    "StrongBlock 100": 24,
+    "StrongBlock 150": 27,
+    "Pared Sólida": 24
+  };
+  const [solidThickness, setSolidThickness] = useState(10); // cm
+
+  // Makros
+  const [makrosDepth, setMakrosDepth] = useState(25); // cm
+  const [makrosCoverage, setMakrosCoverage] = useState(0.60); // m² por metro lineal
+  const makrosConcretePerM2 = { 18: 0.083, 20: 0.091, 25: 0.103, 29: 0.114, 32: 0.121 }; // m³/m²
+
+  // SteelFoam
+  const [sfDepth, setSfDepth] = useState(25);
+  const [sfFactor, setSfFactor] = useState(1.05); // factor sobre capa de 5 cm
+
+  // Joist
+  const [span, setSpan] = useState(6.0);
+  const [width, setWidth] = useState(8.4);
+  const joistSpacing = 0.60;
+  const [joistModel, setJoistModel] = useState("J-RST/25");
+  const foamCoveragePerPiece = 0.62; // m²/pza espuma entre viguetas (ref)
+
+  // ProLite
+  const [proliteCoverage, setProliteCoverage] = useState(0.60); // m² por ML
+
+  // Cotización (modal)
   const [showQuote, setShowQuote] = useState(false);
   const [quoteId, setQuoteId] = useState(null);
   const [sending, setSending] = useState(false);
@@ -42,11 +92,67 @@ export default function App() {
   const [projLoc, setProjLoc] = useState("");
 
   const results = useMemo(() => {
-    const panelQty = (area / 0.60) * (1 + waste/100);
-    const concrete = area * 0.103;
-    const steel = concrete * steelRate;
-    return { panelLabel: t("Makros (ml)", "Makros (lm)"), panelQty, concrete, steel };
-  }, [area, waste, steelRate, lang]);
+    const A = Math.max(area, 0);
+    const fRec = 1 + waste/100;
+
+    // ===== MUROS ICF =====
+    if (category === "Muros ICF") {
+      const cov = wallCoverage[product] || 0.36;
+      const A_net = A; // futuros vanos (% ventanas/puertas)
+      const blocks = (A_net / cov) * fRec;
+
+      let Vc = 0;
+      if (product === "Pared Sólida") {
+        Vc = A_net * (Math.max(solidThickness, 8) / 100); // m³ = área × espesor
+      } else {
+        Vc = A_net * (tEquiv[product] || 0.09);
+      }
+      const steel = Vc * steelRate;
+
+      return {
+        panelLabel: t("Bloques (pzas)", "Blocks (pcs)"),
+        panelQty: blocks,
+        concrete: Vc,
+        steel,
+        rValue: rMap[product]
+      };
+    }
+
+    // ===== ENTREpisos / TECHOS =====
+    if (category === "Entrepisos/Techos") {
+      if (product === "Makros") {
+        const m3perM2 = makrosConcretePerM2[makrosDepth] ?? 0.103;
+        const ml = (A / Math.max(makrosCoverage, 0.0001)) * fRec;
+        const Vc = A * m3perM2;
+        const steel = Vc * steelRate;
+        return { panelLabel: t("Makros (ml)", "Makros (lm)"), panelQty: ml, concrete: Vc, steel };
+      }
+      if (product === "SteelFoam") {
+        const panelM2 = A * fRec;           // venta por m²
+        const VcLayer = A * 0.05;           // capa 5 cm
+        const VcTotal = VcLayer * sfFactor; // ajuste por peralte/condición
+        const steel = VcTotal * steelRate;
+        return { panelLabel: t("Panel SteelFoam (m²)", "SteelFoam panel (m²)"), panelQty: panelM2, concrete: VcTotal, steel };
+      }
+      if (product === "Joist") {
+        const nJoists = Math.ceil(width / joistSpacing) + 1;
+        const mlJoist = nJoists * span;
+        const foamPieces = (A / foamCoveragePerPiece) * fRec;
+        const VcLayer = A * 0.05;
+        const steel = VcLayer * steelRate;
+        return { panelLabel: t("Viguetas (ml)", "Joists (lm)"), panelQty: mlJoist, joistsPieces: nJoists, foamPieces, concrete: VcLayer, steel };
+      }
+    }
+
+    // ===== PANELES AISLANTES =====
+    if (category === "Paneles Aislantes" && product === "ProLite") {
+      const ml = (A / Math.max(proliteCoverage, 0.0001)) * fRec; // venta por ML
+      return { panelLabel: t("ProLite (ml)", "ProLite (lm)"), panelQty: ml, concrete: 0, steel: 0 };
+    }
+
+    // Fallback
+    return { panelLabel: t("Cantidad", "Quantity"), panelQty: 0, concrete: 0, steel: 0 };
+  }, [category, product, area, waste, steelRate, makrosDepth, makrosCoverage, sfFactor, width, span, proliteCoverage, solidThickness, lang]);
 
   const fmt = (n, f=2) => new Intl.NumberFormat(lang, { maximumFractionDigits: f }).format(Number(n||0));
   const waText = encodeURIComponent(t(
@@ -79,7 +185,8 @@ export default function App() {
     doc.text(isES?'Resumen de Cotización':'Quote Summary', marginX, y);
     doc.setFont('helvetica','normal'); doc.setFontSize(11);
     y+=24; doc.text(`${isES?'ID de cotización':'Quote ID'}: ${quoteId || '—'}`, marginX, y);
-    y+=line; doc.text(`${isES?'Sistema':'System'}: ${system}`, marginX, y);
+    y+=line; doc.text(`${isES?'Categoría':'Category'}: ${category}`, marginX, y);
+    y+=line; doc.text(`${isES?'Producto':'Product'}: ${product}`, marginX, y);
     y+=line; doc.text(`${isES?'Área (m²)':'Area (m²)'}: ${fmt(area,2)}`, marginX, y);
     y+=line; doc.text(`${isES?'Concreto (m³)':'Concrete (m³)'}: ${fmt(results.concrete,2)} — ${isES?'Acero (kg)':'Steel (kg)'}: ${fmt(results.steel,0)}`, marginX, y);
     doc.save(`ICF_Mexico_Cotizacion_${quoteId || 'demo'}.pdf`);
@@ -99,7 +206,7 @@ export default function App() {
 
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">ICF México — {t("Demo PWA", "PWA Demo")}</h1>
+            <h1 className="text-2xl font-semibold">ICF México — {t("Demo PWA (Alpha)", "PWA Demo (Alpha)")}</h1>
             <div className="text-xs mt-1 text-gray-500">
               {t("Entorno:", "Environment:")} <span className="inline-block px-2 py-0.5 rounded bg-gray-100 border">{process.env.NEXT_PUBLIC_ENV || "DEMO"}</span> · <span className="text-gray-400">{QUOTE_ENDPOINT}</span>
             </div>
@@ -115,18 +222,50 @@ export default function App() {
 
         <div className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-lg font-medium mb-3">{t("Entradas (demo)", "Inputs (demo)")}</h2>
+            <h2 className="text-lg font-medium mb-3">{t("Entradas", "Inputs")}</h2>
             <div className="grid sm:grid-cols-2 gap-4">
+              {/* Categoría y producto */}
               <div>
-                <label className="block text-sm mb-1">{t("Sistema", "System")}</label>
-                <select className="w-full border rounded-xl p-2" value={system} onChange={(e)=>setSystem(e.target.value)}>
-                  <option>Makros</option>
-                  <option>Joist</option>
-                  <option>SteelFoam</option>
-                  <option>ProLite</option>
-                  <option>Walls</option>
+                <label className="block text-sm mb-1">{t("Categoría", "Category")}</label>
+                <select className="w-full border rounded-xl p-2" value={category} onChange={(e)=>{ 
+                  setCategory(e.target.value); 
+                  if (e.target.value === "Muros ICF") setProduct("Reticular-20");
+                  if (e.target.value === "Entrepisos/Techos") setProduct("Makros");
+                  if (e.target.value === "Paneles Aislantes") setProduct("ProLite");
+                }}>
+                  <option>Muros ICF</option>
+                  <option>Entrepisos/Techos</option>
+                  <option>Paneles Aislantes</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm mb-1">{t("Producto", "Product")}</label>
+                <select className="w-full border rounded-xl p-2" value={product} onChange={(e)=>setProduct(e.target.value)}>
+                  {category === "Muros ICF" && (
+                    <>
+                      <option>Reticular-15</option>
+                      <option>Reticular-20</option>
+                      <option>StrongBlock 100</option>
+                      <option>StrongBlock 150</option>
+                      <option>Pared Sólida</option>
+                    </>
+                  )}
+                  {category === "Entrepisos/Techos" && (
+                    <>
+                      <option>Makros</option>
+                      <option>Joist</option>
+                      <option>SteelFoam</option>
+                    </>
+                  )}
+                  {category === "Paneles Aislantes" && (
+                    <>
+                      <option>ProLite</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {/* Área / desperdicio / acero */}
               <div>
                 <label className="block text-sm mb-1">{t("Área (m²)", "Area (m²)")}</label>
                 <input type="number" className="w-full border rounded-xl p-2" value={area} onChange={(e)=>setArea(parseFloat(e.target.value||"0"))} />
@@ -139,15 +278,88 @@ export default function App() {
                 <label className="block text-sm mb-1">{t("Acero (kg/m³)", "Steel (kg/m³)")}</label>
                 <input type="number" className="w-full border rounded-xl p-2" value={steelRate} onChange={(e)=>setSteelRate(parseFloat(e.target.value||"0"))} />
               </div>
+
+              {/* Inputs condicionales */}
+              {category === "Muros ICF" && product === "Pared Sólida" && (
+                <div>
+                  <label className="block text-sm mb-1">{t("Espesor núcleo (cm)", "Core thickness (cm)")}</label>
+                  <select className="w-full border rounded-xl p-2" value={solidThickness} onChange={(e)=>setSolidThickness(parseInt(e.target.value))}>
+                    {[10,14,18].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {category === "Entrepisos/Techos" && product === "Makros" && (
+                <>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Peralte (cm)", "Depth (cm)")}</label>
+                    <select className="w-full border rounded-xl p-2" value={makrosDepth} onChange={(e)=>setMakrosDepth(parseInt(e.target.value))}>
+                      {[18,20,25,29,32].map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Cobertura (m²/ML)", "Coverage (m²/lm)")}</label>
+                    <input type="number" step="0.01" className="w-full border rounded-xl p-2" value={makrosCoverage} onChange={(e)=>setMakrosCoverage(parseFloat(e.target.value||"0.60"))} />
+                  </div>
+                </>
+              )}
+
+              {category === "Entrepisos/Techos" && product === "SteelFoam" && (
+                <>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Peralte EPS (cm)", "EPS depth (cm)")}</label>
+                    <select className="w-full border rounded-xl p-2" value={sfDepth} onChange={(e)=>setSfDepth(parseInt(e.target.value))}>
+                      {[15,20,25,30,35].map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Factor de concreto", "Concrete factor")}</label>
+                    <input type="number" step="0.01" className="w-full border rounded-xl p-2" value={sfFactor} onChange={(e)=>setSfFactor(parseFloat(e.target.value||"1"))} />
+                  </div>
+                </>
+              )}
+
+              {category === "Entrepisos/Techos" && product === "Joist" && (
+                <>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Modelo", "Model")}</label>
+                    <select className="w-full border rounded-xl p-2" value={joistModel} onChange={(e)=>setJoistModel(e.target.value)}>
+                      <option>J-RST/10</option>
+                      <option>J-RST/17.5</option>
+                      <option>J-RST/25</option>
+                      <option>J-RST/30</option>
+                      <option>J-RST/40</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Luz (m)", "Span (m)")}</label>
+                    <input type="number" className="w-full border rounded-xl p-2" value={span} onChange={(e)=>setSpan(parseFloat(e.target.value||"0"))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">{t("Ancho (m)", "Width (m)")}</label>
+                    <input type="number" className="w-full border rounded-xl p-2" value={width} onChange={(e)=>setWidth(parseFloat(e.target.value||"0"))} />
+                  </div>
+                </>
+              )}
+
+              {category === "Paneles Aislantes" && product === "ProLite" && (
+                <div>
+                  <label className="block text-sm mb-1">{t("Cobertura (m²/ML)", "Coverage (m²/lm)")}</label>
+                  <input type="number" step="0.01" className="w-full border rounded-xl p-2" value={proliteCoverage} onChange={(e)=>setProliteCoverage(parseFloat(e.target.value||"0.60"))} />
+                </div>
+              )}
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-lg font-medium mb-3">{t("Resultados (demo)", "Results (demo)")}</h2>
+            <h2 className="text-lg font-medium mb-3">{t("Resultados", "Results")}</h2>
             <div className="grid gap-3">
               <div className="p-3 rounded-xl border">
                 <div className="text-sm text-gray-500">{results.panelLabel}</div>
                 <div className="text-2xl font-semibold">{fmt(results.panelQty, 2)}</div>
+                {category === "Muros ICF" && product !== "Pared Sólida" && (
+                  <div className="text-xs text-gray-500 mt-1">{t("R-Value", "R-Value")}: R-{results.rValue}+</div>
+                )}
               </div>
               <div className="p-3 rounded-xl border">
                 <div className="text-sm text-gray-500">{t("Concreto (m³)", "Concrete (m³)")}</div>
@@ -165,7 +377,7 @@ export default function App() {
         </div>
 
         <footer className="text-xs text-gray-500">
-          {t("Demo PWA lista para instalar en iPhone/Android. Para pruebas no estructurales.", "Installable PWA demo for iPhone/Android. Not for structural design.")}
+          {t("Alpha PWA lista para instalar en iPhone/Android. Para pruebas no estructurales.", "Alpha installable PWA for iPhone/Android. Not for structural design.")}
         </footer>
       </div>
 
@@ -222,7 +434,8 @@ export default function App() {
                 </div>
                 <div className="text-sm text-gray-700">
                   <div><b>{t("ID de cotización", "Quote ID")}:</b> {quoteId}</div>
-                  <div><b>{t("Sistema", "System")}:</b> {system}</div>
+                  <div><b>{t("Categoría", "Category")}:</b> {category}</div>
+                  <div><b>{t("Producto", "Product")}:</b> {product}</div>
                   <div><b>{t("Área", "Area")}:</b> {fmt(area, 2)} m²</div>
                   <div><b>{results.panelLabel}:</b> {fmt(results.panelQty, 2)}</div>
                   <div><b>{t("Concreto (m³)", "Concrete (m³)")}:</b> {fmt(results.concrete, 2)} · <b>{t("Acero (kg)", "Steel (kg)")}:</b> {fmt(results.steel, 0)}</div>
