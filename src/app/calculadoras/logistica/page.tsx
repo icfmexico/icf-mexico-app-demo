@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import LogisticaPDFButton from '../../../components/pdf/logistica/LogisticaPDFButton';
+import dynamic from 'next/dynamic';
+
+// Carga del botón solo en cliente (sin SSR) para evitar errores en Vercel/SSR
+const LogisticaPDFButton = dynamic(
+  () => import('../../../components/pdf/logistica/LogisticaPDFButton'),
+  { ssr: false }
+);
 
 type Lang = 'es' | 'en';
 type System = 'ICF15' | 'ICF20' | 'PS23' | 'PS27' | 'PS32';
@@ -142,7 +148,6 @@ export default function LogisticaICFPage() {
   const note =
     system === 'ICF15' ? t.note15 : system === 'ICF20' ? t.note20 : t.notePS;
 
-  // Entradas numéricas ya listas para el PDF
   const inputNums = {
     area: Number(area) || 0,
     waste: Number(waste) || 0,
@@ -178,7 +183,7 @@ export default function LogisticaICFPage() {
             EN
           </button>
 
-          {/* Botón PDF (no altera el diseño, se alinea junto a los toggles de idioma) */}
+          {/* Botón PDF (solo cliente) */}
           <LogisticaPDFButton
             lang={lang}
             system={system}
@@ -244,7 +249,6 @@ export default function LogisticaICFPage() {
         <h2 className="text-lg font-semibold">{t.results}</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Tabla principal */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm tabular-nums">
               <tbody>
@@ -254,10 +258,7 @@ export default function LogisticaICFPage() {
                 )}
                 <Row label={t.pallets} value={fmt(res.palletsLine)} />
                 {res.palletsCorner > 0 && (
-                  <Row
-                    label={t.palletsCorner}
-                    value={fmt(res.palletsCorner)}
-                  />
+                  <Row label={t.palletsCorner} value={fmt(res.palletsCorner)} />
                 )}
                 <Row label={t.palletsTotal} value={fmt(res.palletsTotal)} />
                 <Row label={t.trucks} value={fmt(res.trucks)} />
@@ -265,7 +266,6 @@ export default function LogisticaICFPage() {
             </table>
           </div>
 
-          {/* Sugerencias redondeadas */}
           <div className="rounded-xl border p-4 bg-slate-50">
             <div className="text-sm font-medium mb-2">{t.suggested}</div>
             <div className="overflow-x-auto">
@@ -289,13 +289,8 @@ export default function LogisticaICFPage() {
           </div>
         </div>
 
-        {/* Notes */}
         <div className="text-xs opacity-80 pt-2">{note}</div>
       </section>
-
-      <footer className="text-center text-xs opacity-70">
-        © 2025 ICF MEXICO — Construcción eficiente y sostenible.
-      </footer>
     </div>
   );
 }
