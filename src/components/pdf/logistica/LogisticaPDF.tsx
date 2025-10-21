@@ -6,7 +6,9 @@ import {
   Text,
   View,
   StyleSheet,
+  Image,
 } from "@react-pdf/renderer";
+import { ICFBrand } from "../_brand/pdfBrand";
 
 type Lang = "es" | "en";
 type System = "ICF15" | "ICF20" | "PS23" | "PS27" | "PS32";
@@ -42,58 +44,66 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingHorizontal: 28,
     fontSize: 11,
+    fontFamily: ICFBrand.font.base,
+    color: "#111",
   },
-  brandHeader: {
-    display: "flex",
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    paddingBottom: 8,
+    alignItems: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: ICFBrand.colors.accent,
+    paddingBottom: 10,
     marginBottom: 12,
   },
-  brandTitle: {
+  brand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  logo: { width: 50, height: 30 },
+  brandText: {
     fontSize: 16,
     fontWeight: 700,
+    color: ICFBrand.colors.primary,
   },
-  brandSub: {
+  slogan: {
     fontSize: 9,
-    color: "#6b7280",
+    color: ICFBrand.colors.gray,
   },
   badge: {
     fontSize: 10,
     borderWidth: 1,
+    borderColor: ICFBrand.colors.primary,
+    color: ICFBrand.colors.primary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   h1: { fontSize: 14, marginBottom: 6, fontWeight: 700 },
-  grid2: { display: "flex", flexDirection: "row", gap: 16 },
-  col: { flex: 1 },
   card: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: ICFBrand.colors.border,
     borderRadius: 8,
     padding: 10,
     marginBottom: 10,
   },
   row: {
-    display: "flex",
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: ICFBrand.colors.light,
     paddingVertical: 4,
   },
   cellL: { flex: 1 },
   cellR: { width: 120, textAlign: "right", fontWeight: 700 },
-  small: { fontSize: 9, color: "#6b7280" },
+  small: { fontSize: 9, color: ICFBrand.colors.gray },
   footer: {
     position: "absolute",
     left: 28,
     right: 28,
     bottom: 24,
     fontSize: 9,
-    color: "#6b7280",
+    color: ICFBrand.colors.gray,
     textAlign: "center",
   },
 });
@@ -169,13 +179,16 @@ export default function LogisticaPDFDoc({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.brandHeader}>
-          <View>
-            <Text style={styles.brandTitle}>ICF MEXICO</Text>
-            <Text style={styles.brandSub}>
-              Construcción eficiente y sostenible — www.icfmexico.com
-            </Text>
+        {/* Encabezado con logo y marca */}
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <Image src="/logo-icf-mexico.png" style={styles.logo} />
+            <View>
+              <Text style={styles.brandText}>{ICFBrand.info.name}</Text>
+              <Text style={styles.slogan}>
+                {ICFBrand.info.slogan} — {ICFBrand.info.website}
+              </Text>
+            </View>
           </View>
           <View>
             <Text style={styles.badge}>{badge}</Text>
@@ -184,7 +197,7 @@ export default function LogisticaPDFDoc({
 
         <Text style={styles.h1}>{t.title}</Text>
 
-        {/* Inputs */}
+        {/* Entradas */}
         <View style={styles.card}>
           <Text style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
             {t.inputs}
@@ -203,77 +216,71 @@ export default function LogisticaPDFDoc({
           </View>
         </View>
 
-        {/* Results + Suggested */}
-        <View style={styles.grid2}>
-          <View style={styles.col}>
-            <View style={styles.card}>
-              <Text style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-                {t.results}
-              </Text>
-
-              <View style={styles.row}>
-                <Text style={styles.cellL}>{t.blocks}</Text>
-                <Text style={styles.cellR}>{fmt(out.blocksLine)}</Text>
-              </View>
-              {out.blocksCorner > 0 && (
-                <View style={styles.row}>
-                  <Text style={styles.cellL}>{t.corners}</Text>
-                  <Text style={styles.cellR}>{fmt(out.blocksCorner)}</Text>
-                </View>
-              )}
-              <View style={styles.row}>
-                <Text style={styles.cellL}>{t.pallets}</Text>
-                <Text style={styles.cellR}>{fmt(out.palletsLine)}</Text>
-              </View>
-              {out.palletsCorner > 0 && (
-                <View style={styles.row}>
-                  <Text style={styles.cellL}>{t.palletsCorner}</Text>
-                  <Text style={styles.cellR}>{fmt(out.palletsCorner)}</Text>
-                </View>
-              )}
-              <View style={styles.row}>
-                <Text style={styles.cellL}>{t.palletsTotal}</Text>
-                <Text style={styles.cellR}>{fmt(out.palletsTotal)}</Text>
-              </View>
-              <View style={[styles.row, { borderBottomWidth: 0 }]}>
-                <Text style={styles.cellL}>{t.trucks}</Text>
-                <Text style={styles.cellR}>{fmt(out.trucks)}</Text>
-              </View>
-            </View>
+        {/* Resultados */}
+        <View style={styles.card}>
+          <Text style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+            {t.results}
+          </Text>
+          <View style={styles.row}>
+            <Text style={styles.cellL}>{t.blocks}</Text>
+            <Text style={styles.cellR}>{fmt(out.blocksLine)}</Text>
           </View>
-
-          <View style={styles.col}>
-            <View style={styles.card}>
-              <Text style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
-                {t.suggested}
-              </Text>
-              <View style={styles.row}>
-                <Text style={styles.cellL}>{t.pallets}</Text>
-                <Text style={styles.cellR}>{String(out.sug.palletsLine)}</Text>
-              </View>
-              {out.palletsCorner > 0 && (
-                <View style={styles.row}>
-                  <Text style={styles.cellL}>{t.palletsCorner}</Text>
-                  <Text style={styles.cellR}>
-                    {String(out.sug.palletsCorner)}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.row}>
-                <Text style={styles.cellL}>{t.palletsTotal}</Text>
-                <Text style={styles.cellR}>
-                  {String(out.sug.palletsTotal)}
-                </Text>
-              </View>
-              <View style={[styles.row, { borderBottomWidth: 0 }]}>
-                <Text style={styles.cellL}>{t.trucks}</Text>
-                <Text style={styles.cellR}>{String(out.sug.trucks)}</Text>
-              </View>
+          {out.blocksCorner > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.cellL}>{t.corners}</Text>
+              <Text style={styles.cellR}>{fmt(out.blocksCorner)}</Text>
             </View>
+          )}
+          <View style={styles.row}>
+            <Text style={styles.cellL}>{t.pallets}</Text>
+            <Text style={styles.cellR}>{fmt(out.palletsLine)}</Text>
+          </View>
+          {out.palletsCorner > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.cellL}>{t.palletsCorner}</Text>
+              <Text style={styles.cellR}>{fmt(out.palletsCorner)}</Text>
+            </View>
+          )}
+          <View style={styles.row}>
+            <Text style={styles.cellL}>{t.palletsTotal}</Text>
+            <Text style={styles.cellR}>{fmt(out.palletsTotal)}</Text>
+          </View>
+          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+            <Text style={styles.cellL}>{t.trucks}</Text>
+            <Text style={styles.cellR}>{fmt(out.trucks)}</Text>
           </View>
         </View>
 
-        {/* Note */}
+        {/* Sugerencias */}
+        <View style={styles.card}>
+          <Text style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+            {t.suggested}
+          </Text>
+          <View style={styles.row}>
+            <Text style={styles.cellL}>{t.pallets}</Text>
+            <Text style={styles.cellR}>{String(out.sug.palletsLine)}</Text>
+          </View>
+          {out.palletsCorner > 0 && (
+            <View style={styles.row}>
+              <Text style={styles.cellL}>{t.palletsCorner}</Text>
+              <Text style={styles.cellR}>
+                {String(out.sug.palletsCorner)}
+              </Text>
+            </View>
+          )}
+          <View style={styles.row}>
+            <Text style={styles.cellL}>{t.palletsTotal}</Text>
+            <Text style={styles.cellR}>
+              {String(out.sug.palletsTotal)}
+            </Text>
+          </View>
+          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+            <Text style={styles.cellL}>{t.trucks}</Text>
+            <Text style={styles.cellR}>{String(out.sug.trucks)}</Text>
+          </View>
+        </View>
+
+        {/* Nota */}
         <View style={{ marginTop: 8 }}>
           <Text style={styles.small}>{note}</Text>
         </View>
